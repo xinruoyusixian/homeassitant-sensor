@@ -19,7 +19,9 @@ if(not net[1]):
   
   
 from AHT10  import AHT10
-from oled  import oled
+#魔改了ssd1306 直接操作现存不用framebuffer 对8266友好
+from oled_save_mem  import oled
+
 from mqtt  import mqtt
 i2c = I2C(scl=Pin(14), sda=Pin(12), freq=1000000)
 
