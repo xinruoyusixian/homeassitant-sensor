@@ -46,7 +46,7 @@ def feedDog():
 #开启看门狗I
 wdt = WDT()
 ha=hass.hass()
-ha.mq.publish(b"启动,IP:%s"%(net[0].ifconfig()[0]),'txt/state')
+ha.text("启动,IP:%s"%(net[0].ifconfig()[0]))
 
 led.on()
 timeFlag=True
@@ -93,10 +93,11 @@ while (1):
        gc.collect()
     except KeyboardInterrupt:
       feedDog()
-      ha.mq.publish(b"手动中断",'txt/state')
+      ha.text("手动中断")
       print("中断,开始喂狗")
       raise "中断"
-    finally:
-        ha.mq.publish(b"出现异常",'txt/state')
+    except Exception as e:
+        print("err:",e)
+        ha.text(e)
 
 
