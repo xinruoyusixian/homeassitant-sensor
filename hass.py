@@ -57,9 +57,13 @@ class hass:
         self.mq.connect()
     def callback_rec(self,topic,msg):
         pass
-    def regedit(self):
+    def registrar(self,type="t"):
+        if type=='h':
+            self.mq.publish(self.config_H,self.hassConfig_H_topic)
+            return
         self.mq.publish(self.config_T,self.hassConfig_T_topic)
-        self.mq.publish(self.config_H,self.hassConfig_H_topic)
+        return
+        
     def publish(self,t,h):
         self.mq.publish(self.config_Value%(t,h),self.hassConfig_V_topic)
     def text(self,txt):
