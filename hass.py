@@ -3,12 +3,13 @@ import time,mqtt,ujson
 
 
 class hass:
-    def __init__(self,ip="192.168.5.1",port=1883,client_id='hass_sensor'):
+    def __init__(self,ip="192.168.5.1",port=1883,client_id='hass_TH'):
         
         self.hassConfig_T_topic='homeassistant/sensor/sensorBedroomT/config'
         self.hassConfig_H_topic='homeassistant/sensor/sensorBedroomH/config'
         self.hassConfig_V_topic='homeassistant/sensor/sensorBedroom/state'
         self.topic='homeassistant'
+        self.text_topic='txt/state'
         self.config_T="""
         {
         "device_class":"temperature",
@@ -58,7 +59,10 @@ class hass:
         pass
     def regedit(self):
         self.mq.publish(self.config_T,self.hassConfig_T_topic)
-        self.mq.publish(self.config_T,self.hassConfig_H_topic)
+        self.mq.publish(self.config_H,self.hassConfig_H_topic)
     def publish(self,t,h):
         self.mq.publish(self.config_Value%(t,h),self.hassConfig_V_topic)
+    def text(self,txt):
+        self.mq.publish(str(txt).encode(),self.text_topic)
+
 
