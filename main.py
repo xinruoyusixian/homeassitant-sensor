@@ -23,7 +23,7 @@ if(not net[1]):
   lib.ap("temperature_seinor","1234567788")
   print("wifi连接失败,已打开wifi热点,temperature_seinor,1234567788,\n 5分钟后重启")
   Timer(-1).init(period=180000, mode=Timer.PERIODIC, callback=lambda t:machine.reset())
-  display.oled.text("AP OPEND...",0,10)
+  display.oled.text("AP MODE",0,10)
   display.oled.show()
   raise
   
@@ -46,23 +46,37 @@ def feedDog():
 #开启看门狗I
 wdt = WDT()
 ha=hass.hass()
-ha.text("启动,IP:%s"%(net[0].ifconfig()[0]))
+ha.text("启动,IP:%s"%net[0].ifconfig()[0])
 
 led.on()
 timeFlag=True
+gc.mem_free()
 display.oled.fill(0)
 display.draw_ui()
 
 count=0
 display.oled.poweroff()
 disSW=Pin(16,Pin.IN)
+isReg=0
 while (1):
     try:
        wdt.feed()
        sec=time.localtime()[5]
+       if isReg<5:
+           print(isReg)
+           if sec==15:
+                ha.registrar('h')#注册温度传感器
+                print("注册温度传感器")
+                isReg+=1
+           if sec==30:
+                ha.registrar('t')#注册温度传感器
+                print("注册湿度传感器")
+                isReg+=1
+       
               
        t=hm.temperature()
        h=hm.humidity()
+
         
        if disSW.value():
             display.oled.poweron()
@@ -80,7 +94,7 @@ while (1):
             timeFlag=True
 
 
-       if count<15:
+       if sec<15:
           time.sleep(0.1)
           display.display(str(t),str(h),"h")
        else:
@@ -88,8 +102,10 @@ while (1):
           display.display(str(t),str(h),"t")
        #手动计数器     
        count+=1
+
        if count==30:
-          count=0
+            count=0
+
        gc.collect()
     except KeyboardInterrupt:
       feedDog()
@@ -97,7 +113,5 @@ while (1):
       print("中断,开始喂狗")
       raise "中断"
     except Exception as e:
-        print("err:",e)
         ha.text(e)
-
 
