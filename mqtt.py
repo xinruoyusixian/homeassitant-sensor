@@ -6,7 +6,7 @@ from ubinascii import hexlify
 
 
 class mqtt:  
-    def __init__(self,server,port,topic,cb, client_id="esp",keepalive=0):
+    def __init__(self,server,port,topic,cb, client_id="esp",keepalive=60):
         self.client_id = client_id
         self.sock = None
         self.server = server
@@ -203,27 +203,8 @@ class mqtt:
           return self.wait_msg()
         except Exception as e:
           print(e)
-          self.connect(clean_session=False)
+          self.connect(clean_session=True)
 
-
-if __name__=="__main__":
-  import time,lib
-    
-  def p_data(topic,msg):
-         print(topic,msg)
-         
-  lib.update_time()
-  mq=mqtt("d023980739a4c6d611f59b9e351b791c","power001",p_data)
-  mq.connect()
-  while 1:
-    #print("%s:%s:%s"%time.localtime()[3:6])
-    
-    mq.check_msg()
-    if time.time()%20==0:
-      print("ping",wifi.ifconfig()[0])
-      mq.publish("1")
-      time.sleep(1)
-    
 
 
 
