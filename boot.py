@@ -3,15 +3,17 @@
 #esp.osdebug(None)
 #os.dupterm(None, 1) # disable REPL on UART(0)
 
-import time,lib,webrepl,gc,os, machine,display,hass
+import time,lib,webrepl,gc,os, machine,display
 from machine import Pin, I2C,WDT,Timer
-
-
+from AHT10  import AHT10   
 i2c = I2C(scl=Pin(14), sda=Pin(12), freq=1000000)
+
+
+
 led=Pin(2,Pin.OUT)
 led.off()
 
-
+hm= AHT10(i2c)
 display=display.display(i2c,128,32)
 display.text("connecting wifi...",0,10)
 display.show()
@@ -19,26 +21,43 @@ display.show()
 net=lib.wifi("PDCN_2.4G","1234567788","temperature")
 webrepl.start()
 
+
+
+restCout=300
 if(not net[1]):
-  lib.ap("temperature_seinor","1234567788")
+  lib.ap("temperature_seinor")
   print("wifi连接失败,已打开wifi热点,temperature_seinor,1234567788,\n 5分钟后重启")
-  Timer(-1).init(period=180000, mode=Timer.PERIODIC, callback=lambda t:machine.reset())
-  display.text("AP MODE",0,10)
-  display.show()
-  raise
+  #Timer(-1).init(period=180000, mode=Timer.PERIODIC, callback=lambda t:machine.reset())
+  
+  while True:
+      if restCout==0:
+          machine.reset()
+      t=hm.temperature()
+      h=hm.humidity()
+      def func(that):
+          that.fill(0)
+          that.text("Reset At %ss" %restCout,3,3)
+      display.display(str(t),str(h),"h","ap",func)
+      time.sleep(1)
+      display.display(str(t),str(h),"t","ap",func)
+      time.sleep(1)
+      restCout-=2
   
   
   
-from AHT10  import AHT10       
 
-
-hm= AHT10(i2c)
-
+restCout=30
+while 1:
+    display.fill(0)
+    display.text("wating for %ss"%restCout,0,10)
+    display.show()
+    time.sleep(1)
+    if restCout==0:
+      break
+    restCout-=1
 
 
 lib.update_time()
-
-
 def feedDog():
   tim = Timer(-1)
   tim.init(period=1000, mode=Timer.PERIODIC, callback=lambda t:wdt.feed())
@@ -52,12 +71,12 @@ led.on()
 timeFlag=True
 gc.mem_free()
 display.fill(0)
-display.draw_ui()
 
 count=0
 display.poweroff()
 disSW=Pin(16,Pin.IN)
 isReg=0
+isTimeUpdated=False
 while (1):
     try:
        wdt.feed()
@@ -103,6 +122,15 @@ while (1):
        count+=1
 
        if count==30:
+         #尝试更新时间 直到更新成功
+            print("isTimeUpdated:",isTimeUpdated)
+            if not isTimeUpdated:
+              print("开始更新时间")
+              if lib.update_time():
+                isTimeUpdated=True
+                print("时间更新成功")
+                
+              
             count=0
 
        gc.collect()
