@@ -110,7 +110,7 @@ while (1):
        sec=time.localtime()[5]
        t=hm.temperature()
        h=hm.humidity()
-
+       runSec=time.ticks_ms()/1000
         
        if OLED_SW:
             display.poweron()
@@ -126,7 +126,7 @@ while (1):
        else:
             led.on()
             timeFlag=True
-
+       
 
        if count%10==0:
           displayType=False if displayType else True
@@ -137,14 +137,13 @@ while (1):
             display.display(str(t),str(h),"t")
        #手动计数器     
        count+=1
-
-       if count==300:
+       if count%399==0:
            ha.registrar('h')#注册温度传感器
-           ha.text("注册湿度")
-       if count==600:
+           #ha.text("注册湿度")
+       if count%599==0:
            ha.registrar('t')#注册温度传感器
-           ha.text("注册温度")
-       if count==900:
+           #ha.text("注册温度")
+       if count%899==0:
             #尝试更新时间 直到更新成功
             if not isTimeUpdated:
               print("开始更新时间")
@@ -152,15 +151,9 @@ while (1):
                 isTimeUpdated=True
                 ha.text("时间更新成功")
                 
-       if count==1200:
+       if count==19000:
             count=0
-            runSec=time.ticks_ms()/1000
-            if runSec<3600:
-                ha.text("运行时间:%.2f min"%(runSec/60))
-                continue
-            else:
-                ha.text("运行时间:%.2f H"%(runSec/3600))
-                continue
+            ha.text("运行时间:%.2f H"%(runSec/3600))
 
 
 
@@ -181,7 +174,7 @@ while (1):
 
         print(e)
 
-        ha.text(e)
+        ha.text(str(e))
 
 
 
