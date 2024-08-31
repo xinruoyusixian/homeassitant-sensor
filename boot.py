@@ -1,9 +1,12 @@
+
+
+
 # This file is executed on every boot (including wake-boot from deepsleep)
 #import esp
 #esp.osdebug(None)
 #os.dupterm(None, 1) # disable REPL on UART(0)
 
-import time,lib,webrepl,gc,os, machine,display
+import time,lib,webrepl,gc,os, machine,display,hass
 from machine import Pin, I2C,WDT,Timer
 from AHT10  import AHT10   
 i2c = I2C(scl=Pin(14), sda=Pin(12), freq=1000000)
@@ -12,21 +15,30 @@ i2c = I2C(scl=Pin(14), sda=Pin(12), freq=1000000)
 
 led=Pin(2,Pin.OUT)
 led.off()
-
+OLED_SW=False
 hm= AHT10(i2c)
 display=display.display(i2c,128,32)
 display.text("connecting wifi...",0,10)
 display.show()
 
 net=lib.wifi("PDCN_2.4G","1234567788","temperature")
+
 webrepl.start()
 
 
 
+
+
+
+
 restCout=300
+
 if(not net[1]):
+
   lib.ap("temperature_seinor")
+
   print("wifi连接失败,已打开wifi热点,temperature_seinor,1234567788,\n 5分钟后重启")
+
   #Timer(-1).init(period=180000, mode=Timer.PERIODIC, callback=lambda t:machine.reset())
   
   while True:
@@ -40,6 +52,7 @@ if(not net[1]):
       display.display(str(t),str(h),"h","ap",func)
       time.sleep(1)
       display.display(str(t),str(h),"t","ap",func)
+
       time.sleep(1)
       restCout-=2
   
@@ -62,84 +75,113 @@ def feedDog():
   tim = Timer(-1)
   tim.init(period=1000, mode=Timer.PERIODIC, callback=lambda t:wdt.feed())
   
+def mqMsg(tpoic,msg):
+  global OLED_SW
+  msg=msg.decode()
+  print(msg)
+  if msg=="ON":
+      OLED_SW=True
+      ha.sw_On()
+  if msg=="OFF":
+      OLED_SW=False
+      ha.sw_Off()
 #开启看门狗I
 wdt = WDT()
 ha=hass.hass()
+ha.callback_rec("homeassistant/bedroom/switch1/set",mqMsg)
 ha.text("启动,IP:%s"%net[0].ifconfig()[0])
+
+ha.registrar('t')#注册温度传感器
+ha.registrar('h')#注册温度传感器
 
 led.on()
 timeFlag=True
 gc.mem_free()
+
 display.fill(0)
 
 count=0
 display.poweroff()
-disSW=Pin(16,Pin.IN)
-isReg=0
 isTimeUpdated=False
+displayType=True
 while (1):
     try:
        wdt.feed()
        sec=time.localtime()[5]
-       if isReg<20:
-           if sec==15:
-                ha.registrar('h')#注册温度传感器
-                print("注册温度传感器",sec,isReg)
-                isReg+=1
-           if sec==45:
-                ha.registrar('t')#注册温度传感器
-                print("注册湿度传感器",sec,isReg)
-                isReg+=1
-       
-              
        t=hm.temperature()
        h=hm.humidity()
 
         
-       if disSW.value():
+       if OLED_SW:
             display.poweron()
        else:
             display.poweroff()   
-       ha.mq.check_msg()
-       if sec%4==0:
+       ha.check_msg()
+       if sec%5==0:
          led.off()
          if timeFlag:
             #print(t,h,disSW.value())
-            ha.publish(t,h)
+            ha.publishTH(t,h)
             timeFlag=False
        else:
             led.on()
             timeFlag=True
 
 
-       if sec<15:
-          time.sleep(0.1)
-          display.display(str(t),str(h),"h")
-       else:
-          time.sleep(0.1)
-          display.display(str(t),str(h),"t")
+       if count%10==0:
+          displayType=False if displayType else True
+          if displayType:
+
+            display.display(str(t),str(h),"h")
+          else:
+            display.display(str(t),str(h),"t")
        #手动计数器     
        count+=1
 
-       if count==30:
-         #尝试更新时间 直到更新成功
-            print("isTimeUpdated:",isTimeUpdated)
+       if count==300:
+           ha.registrar('h')#注册温度传感器
+           ha.text("注册湿度")
+       if count==600:
+           ha.registrar('t')#注册温度传感器
+           ha.text("注册温度")
+       if count==900:
+            #尝试更新时间 直到更新成功
             if not isTimeUpdated:
               print("开始更新时间")
               if lib.update_time():
                 isTimeUpdated=True
-                print("时间更新成功")
+                ha.text("时间更新成功")
                 
-              
+       if count==1200:
             count=0
+            runSec=time.ticks_ms()/1000
+            if runSec<3600:
+                ha.text("运行时间:%.2f min"%(runSec/60))
+                continue
+            else:
+                ha.text("运行时间:%.2f H"%(runSec/3600))
+                continue
+
+
+
 
        gc.collect()
+
     except KeyboardInterrupt:
+
       feedDog()
+
       ha.text("手动中断")
+
       print("中断,开始喂狗")
+
       raise "中断"
+
     except Exception as e:
+
         print(e)
+
         ha.text(e)
+
+
 
